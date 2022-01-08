@@ -8,7 +8,7 @@ const { get, set, find } = require("lodash");
 const FormData = require("form-data");
 
 const activitiesFolder = "activities";
-const dow = [
+const daysOfWeek = [
   "Sunday",
   "Monday",
   "Tuesday",
@@ -74,12 +74,12 @@ const getNikeActivitiesIds = async () => {
 };
 
 const buildGpx = data => {
-  const day = dow[new Date(data.start_epoch_ms).getDay()];
+  const day = daysOfWeek[new Date(data.start_epoch_ms).getDay()];
   const getISODate = ms => new Date(ms).toISOString();
-  const lats = find(data.metrics, ["type", "latitude"]);
-  const lons = find(data.metrics, ["type", "longitude"]);
-  const elevs = find(data.metrics, ["type", "elevation"]);
-  const hrs = find(data.metrics, ["type", "heart_rate"]);
+  const latitudes = find(data.metrics, ["type", "latitude"]);
+  const longitudes = find(data.metrics, ["type", "longitude"]);
+  const elevations = find(data.metrics, ["type", "elevation"]);
+  const heartRates = find(data.metrics, ["type", "heart_rate"]);
   let points = [];
 
   const root = {
@@ -103,46 +103,46 @@ const buildGpx = data => {
     }
   };
 
-  if (lats && lons) {
-    points = lats.values.map((lat, index) => ({
+  if (latitudes && longitudes) {
+    points = latitudes.values.map((lat, index) => ({
       time: lat.start_epoch_ms,
       latitude: lat.value,
-      longitude: get(lons.values[index], "value")
+      longitude: get(longitudes.values[index], "value")
     }));
   }
 
-  if (elevs) {
+  if (elevations) {
     let idx = 0;
 
     points = points.map(point => {
       if (
-        elevs.values[idx].start_epoch_ms < point.time &&
-        idx < elevs.values.length - 1
+        elevations.values[idx].start_epoch_ms < point.time &&
+        idx < elevations.values.length - 1
       ) {
         idx++;
       }
 
       return {
         ...point,
-        elevation: elevs.values[idx].value
+        elevation: elevations.values[idx].value
       };
     });
   }
 
-  if (hrs) {
+  if (heartRates) {
     let idx = 0;
 
     points = points.map(point => {
       if (
-        hrs.values[idx].start_epoch_ms < point.time &&
-        idx < hrs.values.length - 1
+        heartRates.values[idx].start_epoch_ms < point.time &&
+        idx < heartRates.values.length - 1
       ) {
         idx++;
       }
 
       return {
         ...point,
-        heartrate: hrs.values[idx].value
+        heartrate: heartRates.values[idx].value
       };
     });
   }
