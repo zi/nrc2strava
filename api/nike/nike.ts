@@ -30,28 +30,28 @@ function getActivityById(uuid: string) {
   );
 }
 
-async function getActivitiesIds() {
-  const ids: string[] = [];
-  let timeOffset: number | undefined = 0;
+async function getActivitiesIds(
+  timeOffset: number = 0,
+  ids: Array<string> = []
+): Promise<Array<string>> {
+  const { activities, paging }: NikeActivities = await getActivitiesByTime(
+    timeOffset
+  );
 
-  while (timeOffset !== undefined) {
-    const { activities, paging }: NikeActivities = await getActivitiesByTime(
-      timeOffset
-    );
-
-    if (activities === undefined) {
-      timeOffset = undefined;
-      throw new Error("Something went wrong. no activities found");
-    }
-
-    activities.forEach((activity) => ids.push(activity.id));
-    timeOffset = paging.after_time;
-
-    console.log(`Successfully retrieved ${activities.length} ids`);
+  if (activities === undefined) {
+    throw new Error("Something went wrong. no activities found");
   }
 
-  console.log(`Total ${ids.length} ids retrieved`);
-  return ids;
+  console.log(`Successfully retrieved ${activities.length} ids`);
+
+  const newIds = ids.concat(activities.map((activity) => activity.id));
+  const hasMore = paging.after_time !== undefined;
+
+  if (hasMore) {
+    return getActivitiesIds(paging.after_time, newIds);
+  }
+
+  return newIds;
 }
 
 export { getActivitiesIds, getActivityById };
