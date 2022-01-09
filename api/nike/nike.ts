@@ -8,14 +8,14 @@ async function nikeFetch<T>(url: string): Promise<T> {
     },
   });
   if (response.status === 401) {
-    return Promise.reject("Nike token is not valid");
+    throw new Error("Nike token is not valid");
   }
 
   if (response.ok) {
     return response.json();
   }
 
-  return Promise.reject("Something went wrong");
+  throw new Error("Something went wrong");
 }
 
 function getActivitiesByTime(time?: number) {
@@ -35,25 +35,19 @@ async function getActivitiesIds() {
   let timeOffset: number | undefined = 0;
 
   while (timeOffset !== undefined) {
-    await getActivitiesByTime(timeOffset)
-      .then((data) => {
-        const { activities, paging } = data;
+    const { activities, paging }: NikeActivities = await getActivitiesByTime(
+      timeOffset
+    );
 
-        if (activities === undefined) {
-          timeOffset = undefined;
+    if (activities === undefined) {
+      timeOffset = undefined;
+      throw new Error("Something went wrong. no activities found");
+    }
 
-          return Promise.reject("Something went wrong. no activities found");
-        }
+    activities.forEach((activity) => ids.push(activity.id));
+    timeOffset = paging.after_time;
 
-        activities.forEach((activity) => ids.push(activity.id));
-        timeOffset = paging.after_time;
-
-        return Promise.resolve(
-          `Successfully retrieved ${activities.length} ids`
-        );
-      })
-      .then((msg) => console.log(msg))
-      .catch((err) => console.log(err));
+    console.log(`Successfully retrieved ${activities.length} ids`);
   }
 
   console.log(`Total ${ids.length} ids retrieved`);

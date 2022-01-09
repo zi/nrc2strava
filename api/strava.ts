@@ -9,21 +9,24 @@ async function importFile(file: ReadStream) {
   form.append("data_type", "gpx");
   form.append("file", file);
 
-  const response = await fetch("https://www.strava.com/api/v3/uploads", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.STRAVA_BEARER}`,
-    },
-    body: form,
-  });
+  try {
+    const response = await fetch("https://www.strava.com/api/v3/uploads", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.STRAVA_BEARER}`,
+      },
+      body: form,
+    });
 
-  if (response.status === 401) {
-    return Promise.reject("Strava token is not valid");
+    if (response.status === 401) {
+      throw new Error("Strava token is not valid");
+    }
+    if (response.ok) {
+      console.log(`Activity ${file} uploaded`);
+    }
+    throw new Error("Something went wrong");
+  } catch (error) {
+    console.warn(error);
   }
-  if (response.ok) {
-    return Promise.resolve(`Activity ${file} uploaded`);
-  }
-  return await Promise.reject("Something went wrong");
 }
-
 export { importFile };

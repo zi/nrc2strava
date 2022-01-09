@@ -1,5 +1,6 @@
 require("dotenv").config();
-import { mkdirSync, writeFile, readdir, createReadStream } from "fs";
+import { mkdirSync, createReadStream } from "fs";
+import { writeFile, readdir } from "fs/promises";
 import { join } from "path";
 import rimraf from "rimraf";
 import { create } from "xmlbuilder";
@@ -144,55 +145,51 @@ const buildGpx = (data: NikeActivity) => {
 };
 
 if (process.argv.includes("nike") && !process.argv.includes("strava")) {
-  rimraf(join(__dirname, activitiesFolder), () => {
+  rimraf(join(__dirname, activitiesFolder), async () => {
     mkdirSync(join(__dirname, activitiesFolder));
 
-    getActivitiesIds().then((ids) => {
-      ids.map((id) => {
-        getActivityById(id)
-          .then(async (data) => {
-            if (data.type !== "run") {
-              return Promise.reject("Is not a running activity");
-            }
+    try {
+      const ids = await getActivitiesIds();
 
-            if (
-              !data.metric_types.includes("latitude") &&
-              !data.metric_types.includes("longitude")
-            ) {
-              return Promise.reject("Activity without gps data");
-            }
+      ids.map(async (id) => {
+        try {
+          const activity = await getActivityById(id);
 
-            return await new Promise((resolve, reject) => {
-              writeFile(
-                join(__dirname, activitiesFolder, `activity_${data.id}.gpx`),
-                buildGpx(data),
-                (err) => {
-                  if (err) {
-                    reject(err);
-                  }
+          if (activity.type !== "run") {
+            throw "Is not a running activity";
+          }
 
-                  resolve(`Successfully created ${id} activity!`);
-                }
-              );
-            });
-          })
-          .then((msg) => console.log(msg))
-          .catch((err) => console.log(err));
+          if (
+            !activity.metric_types.includes("latitude") &&
+            !activity.metric_types.includes("longitude")
+          ) {
+            throw "Activity without gps data";
+          }
+
+          await writeFile(
+            join(__dirname, activitiesFolder, `activity_${activity.id}.gpx`),
+            buildGpx(activity)
+          );
+          console.log(`Successfully created ${id} activity!`);
+        } catch (error) {
+          console.warn(error instanceof Error ? error.message : error);
+        }
       });
-    });
+    } catch (error) {
+      console.warn(error instanceof Error ? error.message : error);
+    }
   });
 }
 
-if (process.argv.includes("strava") && !process.argv.includes("nike")) {
-  readdir(activitiesFolder, async (err, files) => {
+(async function () {
+  if (process.argv.includes("strava") && !process.argv.includes("nike")) {
+    const files = await readdir(activitiesFolder);
     Promise.all(
-      files.map((file) => {
-        return importFile(createReadStream(`./activities/${file}`))
-          .then((msg) => console.log(msg))
-          .catch((err) => console.log(err));
+      files.map(async (file) => {
+        await importFile(createReadStream(`./activities/${file}`));
       })
     )
       .then(() => console.log("Finish"))
       .catch((err) => console.log(err));
-  });
-}
+  }
+})();
