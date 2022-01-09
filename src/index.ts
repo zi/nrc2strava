@@ -7,7 +7,7 @@ import { getActivitiesIds, getActivityById } from "./api/nike/nike";
 import { importFile } from "./api/strava";
 import { getGpxFromNike } from "./converters/nikeToGpx";
 
-const activitiesFolder = "activities";
+const activitiesFolder = "../activities";
 
 if (process.argv.includes("nike") && !process.argv.includes("strava")) {
   rimraf(join(__dirname, activitiesFolder), async () => {

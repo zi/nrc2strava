@@ -4,7 +4,7 @@
   "description": "Import activities from Nike Run Club to Strava",
   "main": "index.ts",
   "scripts": {
-    "start": "ts-node index.ts"
+    "start": "ts-node src/index.ts"
   },
   "author": "Alex Pryshchepa",
   "license": "ISC",
