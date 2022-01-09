@@ -1,6 +1,7 @@
-const fetch = require("node-fetch");
+import fetch from "node-fetch";
+import { NikeActivities, NikeActivity } from "./models";
 
-async function nikeFetch(url) {
+async function nikeFetch<T>(url: string): Promise<T> {
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${process.env.NIKE_BEARER}`,
@@ -17,21 +18,21 @@ async function nikeFetch(url) {
   return Promise.reject("Something went wrong");
 }
 
-function getActivitiesByTime(time) {
-  return nikeFetch(
+function getActivitiesByTime(time?: number) {
+  return nikeFetch<NikeActivities>(
     `https://api.nike.com/sport/v3/me/activities/after_time/${time}`
   );
 }
 
-function getActivityById(uuid) {
-  return nikeFetch(
+function getActivityById(uuid: string) {
+  return nikeFetch<NikeActivity>(
     `https://api.nike.com/sport/v3/me/activity/${uuid}?metrics=ALL`
   );
 }
 
 async function getActivitiesIds() {
-  let ids = [];
-  let timeOffset = 0;
+  const ids: string[] = [];
+  let timeOffset: number | undefined = 0;
 
   while (timeOffset !== undefined) {
     await getActivitiesByTime(timeOffset)
@@ -44,7 +45,7 @@ async function getActivitiesIds() {
           return Promise.reject("Something went wrong. no activities found");
         }
 
-        activities.forEach((a) => ids.push(a.id));
+        activities.forEach((activity) => ids.push(activity.id));
         timeOffset = paging.after_time;
 
         return Promise.resolve(
@@ -59,4 +60,4 @@ async function getActivitiesIds() {
   return ids;
 }
 
-module.exports = { getActivitiesIds, getActivityById };
+export { getActivitiesIds, getActivityById };

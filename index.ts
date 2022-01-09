@@ -1,11 +1,12 @@
 require("dotenv").config();
-const fs = require("fs");
-const path = require("path");
-const rimraf = require("rimraf");
-const builder = require("xmlbuilder");
-const { get, set, find } = require("lodash");
-const { getActivitiesIds, getActivityById } = require("./api/nike");
-const { importFile } = require("./api/strava");
+import { mkdirSync, writeFile, readdir, createReadStream } from "fs";
+import { join } from "path";
+import rimraf from "rimraf";
+import { create } from "xmlbuilder";
+import { get, set, find } from "lodash";
+import { getActivitiesIds, getActivityById } from "./api/nike/nike";
+import { importFile } from "./api/strava";
+import { NikeActivity } from "./api/nike/models";
 
 const activitiesFolder = "activities";
 const daysOfWeek = [
@@ -15,17 +16,24 @@ const daysOfWeek = [
   "Wednesday",
   "Thursday",
   "Friday",
-  "Saturday"
+  "Saturday",
 ];
 
-const buildGpx = data => {
+const buildGpx = (data: NikeActivity) => {
   const day = daysOfWeek[new Date(data.start_epoch_ms).getDay()];
-  const getISODate = ms => new Date(ms).toISOString();
+  const getISODate = (milliseconds: number) =>
+    new Date(milliseconds).toISOString();
   const latitudes = find(data.metrics, ["type", "latitude"]);
   const longitudes = find(data.metrics, ["type", "longitude"]);
   const elevations = find(data.metrics, ["type", "elevation"]);
   const heartRates = find(data.metrics, ["type", "heart_rate"]);
-  let points = [];
+  let points: Array<{
+    time: number;
+    latitude: number;
+    longitude: number;
+    elevation?: number;
+    heartrate?: number;
+  }> = [];
 
   const root = {
     gpx: {
@@ -39,27 +47,27 @@ const buildGpx = data => {
         "http://www.garmin.com/xmlschemas/TrackPointExtension/v1",
       "@xmlns:gpxx": "http://www.garmin.com/xmlschemas/GpxExtensions/v3",
       metadata: {
-        time: getISODate(data.start_epoch_ms)
+        time: getISODate(data.start_epoch_ms),
       },
       trk: {
         name: `${day} run - NRC`,
-        type: 9
-      }
-    }
+        type: 9,
+      },
+    },
   };
 
   if (latitudes && longitudes) {
     points = latitudes.values.map((lat, index) => ({
       time: lat.start_epoch_ms,
       latitude: lat.value,
-      longitude: get(longitudes.values[index], "value")
+      longitude: get(longitudes.values[index], "value"),
     }));
   }
 
   if (elevations) {
     let idx = 0;
 
-    points = points.map(point => {
+    points = points.map((point) => {
       if (
         elevations.values[idx].start_epoch_ms < point.time &&
         idx < elevations.values.length - 1
@@ -69,7 +77,7 @@ const buildGpx = data => {
 
       return {
         ...point,
-        elevation: elevations.values[idx].value
+        elevation: elevations.values[idx].value,
       };
     });
   }
@@ -77,7 +85,7 @@ const buildGpx = data => {
   if (heartRates) {
     let idx = 0;
 
-    points = points.map(point => {
+    points = points.map((point) => {
       if (
         heartRates.values[idx].start_epoch_ms < point.time &&
         idx < heartRates.values.length - 1
@@ -87,7 +95,7 @@ const buildGpx = data => {
 
       return {
         ...point,
-        heartrate: heartRates.values[idx].value
+        heartrate: heartRates.values[idx].value,
       };
     });
   }
@@ -95,11 +103,23 @@ const buildGpx = data => {
   set(
     root,
     "gpx.trk.trkseg.trkpt",
-    points.map(point => {
-      const el = {
+    points.map((point) => {
+      const el: {
+        "@lat": number;
+        "@lon": number;
+        time: string;
+        ele?: number;
+        extensions?: {
+          "gpxtpx:TrackPointExtension": {
+            "gpxtpx:hr": {
+              "#text": string;
+            };
+          };
+        };
+      } = {
         "@lat": point.latitude,
         "@lon": point.longitude,
-        time: getISODate(point.time)
+        time: getISODate(point.time),
       };
 
       if (point.elevation) {
@@ -110,9 +130,9 @@ const buildGpx = data => {
         el.extensions = {
           "gpxtpx:TrackPointExtension": {
             "gpxtpx:hr": {
-              "#text": point.heartrate
-            }
-          }
+              "#text": point.heartrate + "",
+            },
+          },
         };
       }
 
@@ -120,17 +140,17 @@ const buildGpx = data => {
     })
   );
 
-  return builder.create(root, { encoding: "UTF-8" }).end({ pretty: true });
+  return create(root, { encoding: "UTF-8" }).end({ pretty: true });
 };
 
 if (process.argv.includes("nike") && !process.argv.includes("strava")) {
-  rimraf(path.join(__dirname, activitiesFolder), () => {
-    fs.mkdirSync(path.join(__dirname, activitiesFolder));
+  rimraf(join(__dirname, activitiesFolder), () => {
+    mkdirSync(join(__dirname, activitiesFolder));
 
-    getActivitiesIds().then(ids => {
-      ids.map(id => {
+    getActivitiesIds().then((ids) => {
+      ids.map((id) => {
         getActivityById(id)
-          .then(async data => {
+          .then(async (data) => {
             if (data.type !== "run") {
               return Promise.reject("Is not a running activity");
             }
@@ -143,14 +163,10 @@ if (process.argv.includes("nike") && !process.argv.includes("strava")) {
             }
 
             return await new Promise((resolve, reject) => {
-              fs.writeFile(
-                path.join(
-                  __dirname,
-                  activitiesFolder,
-                  `activity_${data.id}.gpx`
-                ),
+              writeFile(
+                join(__dirname, activitiesFolder, `activity_${data.id}.gpx`),
                 buildGpx(data),
-                err => {
+                (err) => {
                   if (err) {
                     reject(err);
                   }
@@ -160,23 +176,23 @@ if (process.argv.includes("nike") && !process.argv.includes("strava")) {
               );
             });
           })
-          .then(msg => console.log(msg))
-          .catch(err => console.log(err));
+          .then((msg) => console.log(msg))
+          .catch((err) => console.log(err));
       });
     });
   });
 }
 
 if (process.argv.includes("strava") && !process.argv.includes("nike")) {
-  fs.readdir(activitiesFolder, async (err, files) => {
+  readdir(activitiesFolder, async (err, files) => {
     Promise.all(
-      files.map(file => {
-        return importFile(fs.createReadStream(`./activities/${file}`))
-          .then(msg => console.log(msg))
-          .catch(err => console.log(err));
+      files.map((file) => {
+        return importFile(createReadStream(`./activities/${file}`))
+          .then((msg) => console.log(msg))
+          .catch((err) => console.log(err));
       })
     )
       .then(() => console.log("Finish"))
-      .catch(err => console.log(err));
+      .catch((err) => console.log(err));
   });
 }
