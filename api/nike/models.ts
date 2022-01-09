@@ -10,7 +10,8 @@ type NikeMetricType =
   | "steps"
   | "nikefuel"
   | "speed"
-  | "longitude";
+  | "longitude"
+  | "heart_rate";
 type NikeAppID = "NIKEPLUSGPS";
 
 interface NikeMoment {
@@ -67,9 +68,9 @@ interface NikeActivities {
 }
 
 interface NikeValue {
-  start_epoch_ms: number
-  end_epoch_ms: number
-  value: number
+  start_epoch_ms: number;
+  end_epoch_ms: number;
+  value: number;
 }
 
 export { NikeActivities, NikeActivity };
