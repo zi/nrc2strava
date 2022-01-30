@@ -9,12 +9,14 @@ import { getGpxFromNike } from "./converters/nikeToGpx";
 
 const activitiesFolder = "../activities";
 
-if (process.argv.includes("nike") && !process.argv.includes("strava")) {
+const args = process.argv.slice(2);
+if (args.includes("nike") && !args.includes("strava")) {
   rimraf(join(__dirname, activitiesFolder), async () => {
     mkdirSync(join(__dirname, activitiesFolder));
 
     try {
-      const ids = await getActivitiesIds();
+      const date = args[1] ? new Date(args[1]) : undefined;
+      const ids = await getActivitiesIds(date);
 
       ids.map(async (id) => {
         try {
@@ -36,7 +38,7 @@ if (process.argv.includes("nike") && !process.argv.includes("strava")) {
 }
 
 (async function () {
-  if (process.argv.includes("strava") && !process.argv.includes("nike")) {
+  if (args.includes("strava") && !args.includes("nike")) {
     const files = await readdir(activitiesFolder);
     Promise.all(
       files.map(async (file) => {

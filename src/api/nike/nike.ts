@@ -18,9 +18,10 @@ async function nikeFetch<T>(url: string): Promise<T> {
   throw new Error("Something went wrong");
 }
 
-function getActivitiesByTime(time?: number) {
+function getActivitiesByTime(time: Date | number) {
+  const milliseconds = typeof time === "number" ? time : time.getTime();
   return nikeFetch<NikeActivities>(
-    `https://api.nike.com/sport/v3/me/activities/after_time/${time}`
+    `https://api.nike.com/sport/v3/me/activities/after_time/${milliseconds}`
   );
 }
 
@@ -31,7 +32,7 @@ function getActivityById(uuid: string) {
 }
 
 async function getActivitiesIds(
-  timeOffset: number = 0,
+  timeOffset: Date | number = 0,
   ids: Array<string> = []
 ): Promise<Array<string>> {
   const { activities, paging }: NikeActivities = await getActivitiesByTime(
