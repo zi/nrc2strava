@@ -43,6 +43,10 @@ interface NikeActivity {
   summaries: Array<NikeSummary>;
   sources: Array<string>;
   tags: {
+    'com.nike.name': string;
+    'com.nike.temperature': string;
+    'com.nike.weather': string;
+    'com.nike.running.goaltype': string;
     note: string;
     shoes: string;
     terrain: string;

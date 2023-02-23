@@ -7,6 +7,7 @@ const getGpxFromNike = ({
   metric_types,
   metrics,
   start_epoch_ms,
+  tags,
 }: NikeActivity) => {
   if (type !== "run") {
     throw new Error("Is not a running activity");
@@ -69,7 +70,11 @@ const getGpxFromNike = ({
     });
   }
 
-  const root = getGpx(start_epoch_ms, points);
+  const root = getGpx({
+    date: start_epoch_ms,
+    points,
+    name: tags["com.nike.name"],
+  });
 
   return create(root as unknown as Record<string, Object>, {
     encoding: "UTF-8",
